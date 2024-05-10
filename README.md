@@ -12,6 +12,7 @@ There are two output files "trimmed_count_data.csv" and "ultratrim_count_data.cs
 
 "trimmed_count_data.csv" = dataset after trimming genes with only zeros and has gene lengths
 "ultratrim_count_data.csv" = dataset after trimming genes with only zeros and does NOT has gene lengths
+
 A data set without gene length numeric values was written so it does not affect the CurvCut script.
 
 Here is the link to the CurvCut github for installation and instructions.
