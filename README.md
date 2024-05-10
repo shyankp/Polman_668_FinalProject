@@ -14,6 +14,9 @@ There are two output files "trimmed_count_data.csv" and "ultratrim_count_data.cs
 "ultratrim_count_data.csv" = dataset after trimming genes with only zeros and does NOT has gene lengths
 A data set without gene length numeric values was written so it does not affect the CurvCut script.
 
+Here is the link to the CurvCut github for installation and instructions.
+https://github.com/aortizsax/curvcut
+
 After putting "ultratrim_count_data.csv" through CurvCut, there should now be an output file labeled "ultratrim_count_datatable.zerofiltered.csv".
 This was then be transposed, and the transposed data set was used for CLR transformation. 
 
