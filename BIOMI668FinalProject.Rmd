@@ -1,0 +1,178 @@
+---
+title: "BIOMI668 Final Project"
+output: html_document
+date: "2024-05-01"
+---
+```{r}
+library(ggplot2)
+```
+
+## Uploading and trimming the data
+
+```{r}
+
+#Upload data
+#Data set contains samples as the columns and genes identified as the rows
+count_data = read.csv("gene_counts_data.csv")
+
+#Mapping file
+map = read.csv("sohl_map.csv")
+
+
+#Removing rows that only contain zeros
+trimmed_df <- count_data[rowSums(count_data[,-c(1, 2)]) != 0, ]
+
+#Write it to a csv
+write.csv(trimmed_df, file = "trimmed_count_data.csv")
+
+#Data set without the gene length values, so these values don't affect the CurvCut code
+dataset = trimmed_df[,-c(2)]
+write.csv(dataset, file = "ultratrim_count_data.csv")
+
+```
+
+### The dataset, "ultratrim_count_data.csv", is ran through CurvCut. 
+
+## Uploading the data that CurvCut created
+
+CurvCut was created to proved a mathematical backing to eliminating sparse features in a count tables.
+
+```{r}
+#Upload the new data set from CurvCut
+
+ultratrim_data_zf = read.csv("ultratrim_count_datatable.zerofiltered.csv", row.names = 1)
+ultratrim_data_zf = ultratrim_data_zf[,-c(1)]
+
+```
+
+## Need to transpose the data set for plotting, so the samples are on the rows and the gene ids are the columns
+
+
+```{r}
+#Need to transpose the data set for plotting, so the samples are on the rows and the gene ids are the columns
+rownames(ultratrim_data_zf)<-ultratrim_data_zf$X
+ultratrim_data_zf$X<-NULL
+
+dt_transpose = t(ultratrim_data_zf)
+dt_transpose = as.data.frame(dt_transpose)
+#head(dt_transpose)
+
+#Assign the first row as column names
+colnames(dt_transpose) <- dt_transpose[1, ]
+
+#Remove the first row
+dt_transpose <- dt_transpose[-1, ]
+
+```
+
+## Perform CLR Transformation
+
+```{r}
+
+dt_zerorep <- dt_transpose
+
+#Convert the data frame to numeric, otherwise the function won't work on characters
+#Set the sample names to row names because the conversion of characters to numeric changes the samples names to numbers
+sample_names <- rownames(dt_zerorep)
+dt_zerorep <- as.data.frame(sapply(dt_zerorep, as.numeric))
+
+#Replace the zeros with a small number
+dt_zerorep[dt_zerorep == 0] <- 0.001
+
+#Re-add the sample names back into the data
+rownames(dt_zerorep) <- sample_names
+
+#Set the clr function
+clr <- function(x) sweep(log(x), 1, rowMeans(log(x)), "-")
+
+#Now run the transformation and assign to a new data frame
+transformed_data <- data.frame(clr(dt_zerorep))
+
+```
+
+## Run a PCA on the clr-transformed feature table
+
+```{r}
+#PCA with CLR transformed data
+pca <- prcomp(transformed_data)
+
+#Summary
+summary_pca <- summary(pca)
+summary_pca
+
+summary_pca$importance
+
+```
+## Finding the most important geneid for the first component
+
+```{r}
+
+pca_loadings <- data.frame(pca$rotation)
+
+pca_loadings_PC1 <- pca_loadings[order(-pca_loadings$PC1), ]
+
+#Show the top 10 values for PC1
+#I just chose the 10 top values, so all 27411 variables don't knit
+head(pca_loadings_PC1, 10)
+
+
+``` 
+TFPI2 gene is the most important for PC1.
+
+
+## Finding the most important geneid for the second component
+
+```{r}
+pca_loadings_PC2 <- pca_loadings[order(-pca_loadings$PC2), ]
+
+#Show the top 10 values for PC2
+#I just chose the 10 top values, so all 27411 variables don't knit
+head(pca_loadings_PC2, 10)
+
+
+```
+ADHIC gene is the most important for PC2. 
+
+## Add the variables for SampleGroup, TumorType, and SampleNumber to the PCA data frame
+
+
+```{r}
+
+pca_df = as.data.frame(pca$x)
+pca_df$Sample.Number <- map$Sample.Number
+pca_df$Sample.Group <- map$Sample.Group
+pca_df$TumorType <- map$Tumor.Type
+
+
+```
+
+## Plot PC1 against PC2 based on the sample groups of mutations: R132H, R132Q, and WT
+
+```{r}
+p_PCA_group <- ggplot(data = pca_df) + 
+  geom_point(aes(x = PC1, y = PC2, color = Sample.Group)) + 
+    stat_ellipse(geom = "polygon",aes(x = PC1, y = PC2, fill = Sample.Group, color = Sample.Group), alpha = 0.18) +
+  theme_classic() +
+  labs(title= "PCA") +
+  theme(text = element_text(size = 15)) 
+p_PCA_group
+
+
+```
+
+
+## Plot PC1 against PC2 based on the sample type of tumors: HT1080 and U87MG
+
+```{r}
+p_PCA_tumor_type <- ggplot(data = pca_df) + 
+  geom_point(aes(x = PC1, y = PC2, color = TumorType)) + 
+    stat_ellipse(geom = "polygon",aes(x = PC1, y = PC2, fill = TumorType, color = TumorType), alpha = 0.18) +
+  theme_classic() +
+  labs(title= "PCA") +
+  theme(text = element_text(size = 15)) 
+p_PCA_tumor_type
+
+```
+
+
+
